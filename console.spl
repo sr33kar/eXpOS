@@ -1,0 +1,22 @@
+
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13]=SP;
+
+SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11]*512-1;
+
+backup;
+breakpoint;
+alias reg R1;
+alias reg1 R2;
+
+reg=[TERMINAL_STATUS_TABLE+1];
+reg1=[PROCESS_TABLE+16*reg];
+[PROCESS_TABLE+16*reg+8]=P0;
+multipush(R1,R2);
+reg=9;
+reg1=[TERMINAL_STATUS_TABLE+1];
+call MOD_0;
+multipop(R1,R2);
+restore;
+SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13];
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=0;
+ireturn;

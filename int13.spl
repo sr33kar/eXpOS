@@ -1,0 +1,99 @@
+
+alias userSP R0;
+userSP=SP;
+alias physicalPageNum R1;
+alias offset R2;
+alias syscall R3;
+alias syscalladr R4;
+
+physicalPageNum = [PTBR + 2 * ((userSP - 5)/ 512)];
+offset = (userSP - 5) % 512;
+syscalladr = (physicalPageNum * 512) + offset;
+syscall=[syscalladr];
+
+
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13]=SP;
+SP=([PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11])*512-1;
+
+
+if(syscall==17)then
+alias semid R5;
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=17;
+
+	multipush(R0,R1,R2,R3,R4);
+	alias functionNum R1;
+	functionNum=6;
+	alias currentpid R2;
+	currentpid=[SYSTEM_STATUS_TABLE+1];
+	
+	call MOD_0;
+	semid=R0;
+	multipop(R0,R1,R2,R3,R4);
+	if(semid==-1)then
+		[[PTBR + 2 * ((userSP - 1)/ 512)]*512+(userSP - 1) % 512]=-2;
+		[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=0;
+		SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13];
+		ireturn;
+	endif;		
+	
+		alias cnt R8;
+		alias ppr R7;
+		ppr=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11]*512+496;
+		alias index R6;
+		index=0;
+		cnt=0;
+		while(index<8)do
+			if([ppr+2*index] != 1 &&[ppr+2*index ] !=0)then
+				[ppr+2*index]=1;
+				[ppr+2*index+1]=semid;
+				cnt=1;
+			[[PTBR + 2 * ((userSP - 1)/ 512)]*512+(userSP - 1) % 512]=index;
+			break;
+			endif;
+		index=index+1;
+		endwhile;
+
+		if(cnt==0)then
+			[[PTBR + 2 * ((userSP - 1)/ 512)]*512+(userSP - 1) % 512]=-1;
+			[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=0;
+		SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13];
+		ireturn;
+		endif;
+
+endif;
+
+
+if(syscall==18)then
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=18;
+	
+alias semid1 R5;
+	semid1=[[PTBR+2*((userSP-4)/512)]*512 +(userSP - 4) % 512];
+	
+	if(semid1<0 ||semid1>7)then
+	[[PTBR + 2 * ((userSP - 1)/ 512)]*512+(userSP - 1) % 512]=-1;
+	
+		[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=0;
+		SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13];
+		ireturn;	
+	endif;	
+	
+	multipush(R0,R1,R2,R3,R4,R6,R7);
+	alias functionNum R1;
+	functionNum=7;
+	alias currentpid R2;
+	currentpid=[SYSTEM_STATUS_TABLE+1];
+	R3=semid1;
+	call MOD_0;
+	multipop(R0,R1,R2,R3,R4,R6,R7);
+	alias ppr1 R7;
+		ppr1=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11]*512+496;
+	[ppr1+semid1]=-1;
+	[ppr1+semid1+1]=0;
+	[[PTBR + 2 * ((userSP - 1)/ 512)]*512+(userSP - 1) % 512]=0;
+endif;
+
+
+
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+9]=0;
+	SP=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13];
+	ireturn;

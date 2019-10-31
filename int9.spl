@@ -1,0 +1,151 @@
+alias userSP R8;
+userSP=SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+9]=9;
+alias physicalpagenum R1;
+alias offset R2;
+alias filedescphysicaladdr R3;
+alias filename R4;
+PTBR = [PROCESS_TABLE+[SYSTEM_STATUS_TABLE + 1]*16 + 14];
+physicalpagenum=[PTBR+2*((userSP-4)/512)];
+offset=(userSP-4)%512;
+filedescphysicaladdr=(physicalpagenum*512)+offset;
+filename=[filedescphysicaladdr];
+
+alias count R5;
+count=0;
+alias count1 R6;
+count1=0;
+while(count<60)do
+	if (filename==[INODE_TABLE+16*count+1])then
+	
+		if([INODE_TABLE+16*count]==3)then
+			[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 7] =count ;		
+			alias RetValue R0;
+		        RetValue = [PTBR + 2*((userSP -1)/512)]*512 + (userSP -1)%512;
+        		[RetValue] = 0;
+			count1=1;
+			break;
+		endif;
+	endif;
+	count=count+1;
+endwhile;
+
+if(count1!=1)then
+
+	alias RetValue R0;
+      
+        RetValue = [PTBR + 2*((userSP -1)/512)]*512 + (userSP -1)%512;
+        [RetValue] = -1;
+	
+	SP=[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] ;
+	ireturn;
+endif;
+
+
+multipush(R0,R1,R2,R3,R4,R5);
+alias functionNum R1;
+alias pid R2;
+functionNum=3;
+pid=[SYSTEM_STATUS_TABLE+1];
+call MOD_1;
+multipop(R0,R1,R2,R3,R4,R5);
+
+alias userPage R7;
+userPage=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+11];
+[MEMORY_FREE_LIST+userPage]=[MEMORY_FREE_LIST+userPage]+1;
+[SYSTEM_STATUS_TABLE+2]=[SYSTEM_STATUS_TABLE+2]-1;
+
+SP = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 11] * 512 - 1;
+
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+4]=RUNNING;
+[PROCESS_TABLE +  [SYSTEM_STATUS_TABLE + 1] * 16 + 7] =count ;
+
+
+PTBR=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+14];
+PTLR=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+15];
+[PTBR]=63;
+[PTBR+1]="0100";
+[PTBR+2]=64;
+[PTBR+3]="0100";
+[PTBR+4]=-1;		
+[PTBR+5]="0000";
+[PTBR+6]=-1;		
+[PTBR+7]="0000";
+
+
+alias cnt R12;
+cnt=16;
+while(cnt<20)do
+
+multipush(R1,R2,R3,R4,R5);
+alias functionNum R1;
+functionNum=1;
+call MOD_2;
+multipop(R1,R2,R3,R4,R5);
+
+alias retPage R0;
+
+	if(cnt>=16&&cnt<=18)then
+		[PTBR+cnt]=retPage;
+		[PTBR+cnt+1]="0110";
+	else 
+		[PTBR+cnt]=-1;
+		[PTBR+cnt+1]="0000";
+	endif;
+cnt=cnt+2;
+endwhile;
+
+cnt=8;
+
+multipush(R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12);
+
+alias functionNum1 R1;
+alias blocknum R11;
+functionNum1=5;
+blocknum=[INODE_TABLE+16*count+8];
+
+
+call MOD_2;
+multipop(R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12);
+
+alias retPage R0;
+[PTBR+cnt]=retPage;
+[PTBR+cnt+1]="0100";
+	
+
+alias disk_map R9;
+alias inode_entry R10;
+disk_map=DISK_MAP_TABLE+[SYSTEM_STATUS_TABLE+1]*10;
+
+inode_entry=INODE_TABLE+16*count;
+
+[disk_map + 0] = -1;
+[disk_map + 1] = -1;
+[disk_map + 2] = -1;
+[disk_map + 3] = -1;
+[disk_map + 4] = [inode_entry + 8];
+[disk_map + 5] = [inode_entry + 9];
+[disk_map + 6] = [inode_entry + 10];
+[disk_map + 7] = [inode_entry + 11];
+[disk_map + 8] = -1;
+[disk_map + 9] = -1;
+
+
+cnt=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE]+11];
+
+count=496;
+while(count<512)do
+[cnt*512+count]=-1;
+[cnt*512+count+1]=0;
+count=count+2;
+endwhile;
+
+
+
+[[PTBR + 16]*512] = [[PTBR + 8]*512 + 1];
+
+SP = 8*512;
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+9]=0;
+ireturn;

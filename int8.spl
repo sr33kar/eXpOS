@@ -1,0 +1,174 @@
+alias userSP R0;
+userSP=SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+9]=8;
+
+
+alias cpid R2;
+multipush(R0,R1);
+alias functionNum R1;
+functionNum=1;
+call MOD_1;
+cpid=R0;
+multipop(R0,R1);
+
+if(cpid==-1)then
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+9]=0;	
+	
+	 [[PTBR + 2*((userSP -1)/512)]*512 + (userSP -1)%512]=-1;
+        
+	SP=userSP;
+	ireturn;
+endif;
+
+
+
+PTBR=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+14];
+
+alias count5 R1;
+count5=4;
+while(count5<8)do
+if([PTBR+count5]==-1)then
+alias retPage R6;
+
+multipush(R0,R1,R2,R3,R4,R5);
+alias functionNum R1;
+functionNum=1;
+call MOD_2;
+retPage=R0;
+multipop(R0,R1,R2,R3,R4,R5);
+
+
+	[PTBR+count5]=retPage;
+	[PTBR+count5+1]="0110";
+
+endif;
+count5=count5+2;
+endwhile;
+
+
+alias ptbr1 R10;
+alias ptbr2 R11;
+
+ptbr1=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+14];
+ptbr2=[PROCESS_TABLE+cpid*16+14];
+
+alias retPage1 R6;
+
+multipush(R0,R1,R2,R3,R4,R5,R10,R11);
+alias functionNum1 R1;
+functionNum1=1;
+call MOD_2;
+retPage1=R0;
+multipop(R0,R1,R2,R3,R4,R5,R10,R11);
+
+[PROCESS_TABLE+cpid*16+11]=retPage1;	
+
+
+alias cnt R12;
+cnt=16;
+while(cnt<20)do
+alias retPage2 R6;
+
+multipush(R0,R1,R2,R3,R4,R5,R10,R11,R12);
+alias functionNum R1;
+functionNum=1;
+call MOD_2;
+retPage2=R0;
+multipop(R0,R1,R2,R3,R4,R5,R10,R11,R12);
+[ptbr2+cnt]=retPage2;
+[ptbr2+cnt+1]="0110";
+cnt=cnt+2;
+endwhile;
+
+alias cnt1 R13;
+
+PTLR=10;
+cnt=PROCESS_TABLE+cpid*16;
+cnt1=PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16;
+[cnt+0]=0;
+[cnt+2]=[SYSTEM_STATUS_TABLE+1];
+[cnt+3]=[cnt1+3];
+[cnt+4]=CREATED;
+[cnt+6]=[cnt1+6];
+[cnt+7]=[cnt1+7];
+[cnt+9]=0;
+[cnt+10]=[cnt1+10];
+[cnt+12]=0;
+[cnt+13]=[cnt1+13];
+[cnt+14]=PAGE_TABLE_BASE+20*cpid;
+[cnt+15]=PTLR;
+
+
+alias count4 R1;
+count4=496;
+while(count4<=511) do
+[([cnt+11]*512)+count4]=[([cnt1+11]*512)+count4];
+count4=count4+1;
+endwhile;
+
+count4=0;
+cnt1=[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+11]*512+496;
+while(count4<16)do
+if([cnt1+count4]==1)then
+[SEMAPHORE_TABLE+4*([cnt1+count4+1])+1]=[SEMAPHORE_TABLE+4*([cnt1+count4+1])+1]+1;
+endif;
+
+if([cnt1+count4]==0)then
+[OPEN_FILE_TABLE+4*([cnt1+count4+1])+1]=[OPEN_FILE_TABLE+4*([cnt1+count4+1])+1]+1;
+endif;
+
+count4=count4+2;
+endwhile;
+
+
+alias disk_map R9;
+disk_map=DISK_MAP_TABLE+cpid*10;
+
+cnt=DISK_MAP_TABLE+[SYSTEM_STATUS_TABLE+1]*10;
+count4=0;
+
+while(count4<8)do
+[disk_map + count4] = [cnt+count4];
+count4=count4+1;
+endwhile;
+[disk_map + 8] = -1;
+[disk_map + 9] = -1;
+
+
+
+cnt=0;
+while(cnt<=15) do
+       [ptbr2+cnt]=[ptbr1+cnt];
+	[MEMORY_FREE_LIST+[PTBR+cnt]]=[MEMORY_FREE_LIST+[PTBR+cnt]]+1;
+       [ptbr2+cnt+1]=[ptbr1+cnt+1];
+	cnt=cnt+2;
+endwhile;
+
+breakpoint;
+
+alias z R9;
+z=0;
+alias k1 R12;
+alias k2 R13;
+k1=ptbr1;
+k2=ptbr2;
+while(z<512)do
+	[[k2+16]*512+z]=[[k1+16]*512+z];
+	[[k2+18]*512+z]=[[k1+18]*512+z];
+z=z+1;
+endwhile;
+	
+[[PROCESS_TABLE+cpid*16+11]*512]=BP;
+
+	[([k1+ (2*((userSP-1)/512))]*512)+((userSP-1)%512)]=cpid;
+	[([k2+ (2*((userSP-1)/512))]*512)+((userSP-1)%512)]=0;
+
+
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+9]=0;
+
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1]*16) + 13];
+ireturn;
+

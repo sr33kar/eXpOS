@@ -1,0 +1,152 @@
+alias functionNum R1;
+alias relpage R2;
+if(functionNum==1)then
+	
+	[SYSTEM_STATUS_TABLE+3]=[SYSTEM_STATUS_TABLE+3]+1;
+
+while([SYSTEM_STATUS_TABLE+2]==0)do
+	[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+4]=WAIT_MEM;
+	
+	call MOD_5;
+	
+endwhile;
+
+	
+	[SYSTEM_STATUS_TABLE+3]=[SYSTEM_STATUS_TABLE+3]-1;
+	[SYSTEM_STATUS_TABLE+2]=[SYSTEM_STATUS_TABLE+2]-1;
+	
+	alias cnt R0;
+	cnt=76;
+	while(cnt<MAX_MEM_PAGE)do
+		
+		if([MEMORY_FREE_LIST+cnt]==0)then
+			[MEMORY_FREE_LIST+cnt]=1;
+			break;
+		endif;
+		cnt=cnt+1;
+	endwhile;
+	
+		
+
+return;	
+endif;
+
+
+
+if(functionNum==2)then
+alias pageNo R3;
+[MEMORY_FREE_LIST+pageNo]=[MEMORY_FREE_LIST+pageNo]-1;
+
+if([MEMORY_FREE_LIST+pageNo]==0)then
+
+[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] + 1;
+
+
+endif;
+
+	
+        alias count R5;
+        count = 0;
+        while(count<16) do
+	if([PROCESS_TABLE + count*16 + 4] == WAIT_MEM) then
+        [PROCESS_TABLE + count*16 + 4] = READY;
+	
+        endif;
+
+        count = count + 1;
+        endwhile;
+
+return;
+endif;
+
+if(functionNum==3)then
+alias cnt R0;
+cnt=69;
+
+	while(cnt!=256)do
+		if([DISK_FREE_LIST+cnt]==0)then
+		[DISK_FREE_LIST+cnt]=1;
+		return;
+		endif;
+		cnt=cnt+1;
+	endwhile;
+
+	R0=-1;
+	return;
+
+
+endif;
+
+
+
+if(functionNum == 4) then
+[DISK_FREE_LIST + relpage] = [DISK_FREE_LIST + relpage] - 1;
+return;
+endif;
+
+
+
+
+
+
+if(functionNum==5)then
+
+alias p R3;
+alias q R4;
+alias r R5;
+alias pagenum R10;
+alias blocknum R11;
+
+alias retvalue R0;
+p=0;
+r=0;
+
+while(p<16)do
+	q=4;
+	while(q<8)do
+		
+		
+		if([DISK_MAP_TABLE+p*10+q]==blocknum && [PAGE_TABLE_BASE+20*p+2*q+1]=="0100" )then
+			
+				
+		retvalue = [[PROCESS_TABLE + p*16 + 14] + q*2];
+			[MEMORY_FREE_LIST + retvalue] = [MEMORY_FREE_LIST + retvalue] + 1;
+			return;		
+			
+		endif;
+		q=q+1;
+	endwhile;
+p=p+1;
+endwhile;
+
+
+
+multipush(R0,R1,R2,R3,R4,R5,R6,R11);
+alias functionNum1 R1;
+functionNum1=1;
+call MOD_2;
+alias retvalue1 R0;
+pagenum = retvalue1;
+multipop(R0,R1,R2,R3,R4,R5,R6,R11);
+
+multipush(R1,R2,R3,R4,R5,R6,R10);
+alias functionNum2 R1;
+
+alias blocknum1 R4;
+
+functionNum2 = 2;
+alias pid1 R2;
+pid1=[SYSTEM_STATUS_TABLE+1];
+
+alias pagenum1 R3;
+pagenum1=pagenum;
+
+blocknum1=blocknum;
+
+call MOD_4;
+multipop(R1,R2,R3,R4,R5,R6,R10);
+	
+alias retvalue2 R0;
+retvalue2 = pagenum;
+return;
+endif;

@@ -1,0 +1,176 @@
+alias functionnum R1;
+alias currentpid R2;
+if(functionnum==1)then
+alias buff_num R6;
+	while([BUFFER_TABLE+4*buff_num+2]!=-1)do
+	[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+4]=WAIT_BUFFER;
+	[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+5]=buff_num;
+	multipush(R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+	call MOD_5;
+	multipop(R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+	endwhile;
+[BUFFER_TABLE+4*buff_num+2]=[SYSTEM_STATUS_TABLE+1];
+return;
+endif;
+
+if(functionnum==2)then
+	
+	alias buff_num R6;	
+	
+	if([BUFFER_TABLE+buff_num*4+2]!=[SYSTEM_STATUS_TABLE+1])then
+		R0=-1;
+		return;
+	endif;
+	[BUFFER_TABLE+buff_num*4+2]=-1;
+
+	alias index R4;
+	index=2;
+		while(index<16)do
+		if([PROCESS_TABLE+index*16+4]==WAIT_BUFFER && [PROCESS_TABLE+index*16+5]==buff_num)then
+			[PROCESS_TABLE+index*16+4]=READY;
+		endif;
+		index=index+1;		
+		endwhile;
+	R0=0;
+	return;
+
+endif;
+
+
+if(functionnum==3)then
+	while([DISK_STATUS_TABLE]==1) do
+			[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+4]=WAIT_DISK;
+			multipush(R1,R2);
+			call MOD_5;
+			multipop(R1,R2);
+			endwhile;
+	[DISK_STATUS_TABLE]=1;
+	[DISK_STATUS_TABLE+4]=currentpid;
+return;
+endif;
+
+if(functionnum==4)then
+	alias ino_en R7;
+	while([FILE_STATUS_TABLE+ino_en*4]!=-1  )do
+		[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+4]=WAIT_FILE;
+		[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+5]=ino_en;
+		
+			multipush(R1,R2,R3,R4,R5,R7,R9,R10);
+				call MOD_5;
+			multipop(R1,R2,R3,R4,R5,R7,R9,R10);
+	endwhile;
+
+alias cnt_in R4;
+cnt_in=0;
+
+	while([INODE_TABLE+ino_en*16+cnt_in]==-1)do
+	cnt_in=cnt_in+1;
+	
+	if(cnt_in==16)then
+	R0=-1;
+	return;
+	endif;
+	endwhile;
+	
+	breakpoint;
+	[FILE_STATUS_TABLE+ino_en*4]=[SYSTEM_STATUS_TABLE+1];
+
+R0=0;
+return;
+endif;
+
+
+if(functionnum==5)then
+	alias in_en R7;
+	if([FILE_STATUS_TABLE+in_en*4]!=[SYSTEM_STATUS_TABLE+1])then
+	R0=-1;
+	return;
+	endif;	
+		
+	[FILE_STATUS_TABLE+in_en*4]=-1;
+	
+	alias index R4;
+	index=2;
+		while(index<16)do
+		if([PROCESS_TABLE+index*16+4]==WAIT_FILE && [PROCESS_TABLE+index*16+5]==in_en)then
+			[PROCESS_TABLE+index*16+4]=READY;
+		endif;
+		index=index+1;		
+		endwhile;
+	R0=0;
+	return;
+endif;
+
+
+
+
+if(functionnum==6)then
+		alias index R0;
+		index=0;
+		while(index<32)do
+			if([SEMAPHORE_TABLE+index*4+1]==0)then
+				[SEMAPHORE_TABLE+index*4+1]=1;
+				[SEMAPHORE_TABLE+index*4]=-1;
+				break;			
+			endif;
+			index=index+1;
+		endwhile;
+		if(index==32)then
+			R0=-1;
+		endif;
+
+return;
+endif;
+if(functionnum==7)then
+		alias semid R3;
+	alias ppr R6;
+	ppr=[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11]*512+496;
+	alias sid R7;
+	sid=[ppr+2*semid+1];
+	if([SEMAPHORE_TABLE+sid*4]==currentpid)then
+	[SEMAPHORE_TABLE+sid*4]=-1;
+	alias index R4;
+	index=2;
+		while(index<16)do
+		if([PROCESS_TABLE+index*16+4]==WAIT_SEMAPHORE && [PROCESS_TABLE+index*16+5]==sid )then
+			[PROCESS_TABLE+index*16+4]=READY;
+		endif;
+		index=index+1;		
+		endwhile;
+	endif;
+[SEMAPHORE_TABLE+sid*4+1]=[SEMAPHORE_TABLE+sid*4+1]-1;
+
+return;
+endif;
+if(functionnum==8) then
+	while([TERMINAL_STATUS_TABLE]==1) do
+			[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+4]=WAIT_TERMINAL;
+			multipush(R1,R2);
+			call MOD_5;
+			multipop(R1,R2);
+			endwhile;
+	[TERMINAL_STATUS_TABLE]=1;
+	[TERMINAL_STATUS_TABLE+1]=currentpid;
+
+	return;
+endif;
+if(functionnum==9) then
+	alias reg R0;
+	if(currentpid==[TERMINAL_STATUS_TABLE+1]) then
+		[TERMINAL_STATUS_TABLE]=0;
+		alias reg1 R4;
+		reg1=0;
+		while(reg1<16) do
+			if([PROCESS_TABLE+16*reg1+4]==WAIT_TERMINAL) then
+					
+				[PROCESS_TABLE+16*reg1+4]=READY;
+			endif;
+		reg1=reg1+1;
+		endwhile;
+		reg=0;
+		return;
+	endif;
+	reg=-1;
+	return;
+endif;
+				

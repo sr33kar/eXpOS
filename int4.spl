@@ -1,0 +1,216 @@
+alias userSP R9;
+userSP=SP;
+alias physicalPageNum R1;
+alias offset R2;
+alias syscall R3;
+alias syscalladr R4;
+alias filename R5;
+alias RetValue R0;
+alias permi R6;
+physicalPageNum = [PTBR + 2 * ((userSP - 5)/ 512)];
+offset = (userSP - 5) % 512;
+syscalladr = (physicalPageNum * 512) + offset;
+syscall=[syscalladr];
+alias ute R11;
+alias pte R12;
+[PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+13]=SP;
+SP=([PROCESS_TABLE+16*[SYSTEM_STATUS_TABLE+1]+11])*512-1;
+RetValue = [PTBR + 2*((userSP -1)/512)]*512 + (userSP -1)%512;
+pte=PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16;
+
+
+filename=[[PTBR+2*((userSP-4)/512)]*512 +(userSP - 4) % 512];
+permi=[[PTBR+2*((userSP-3)/512)]*512 +(userSP - 3) % 512];
+breakpoint;
+
+
+if(syscall==1)then
+
+[pte+9]=1;
+
+alias count R7;
+count=0;
+alias count1 R8;
+count1=0;
+while(count<60)do
+	if (filename==[INODE_TABLE+16*count+1] && [INODE_TABLE+16*count+0]==2 )then
+			[pte+9]=0;
+        		[RetValue] = 0;
+			SP=[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] ;
+			ireturn;
+	endif;
+	count=count+1;
+endwhile;
+count=0;
+while(count1!=1)do
+	if([INODE_TABLE+16*count+1]==-1)then
+		count1=1;
+	endif;
+	count=count+1;	
+endwhile;
+
+if(count==60)then
+	[pte+9]=0;
+        [RetValue] = -1;
+	SP=[pte + 13] ;
+	ireturn;
+endif;
+
+count=count-1;
+alias in_tb R8;
+in_tb=INODE_TABLE+16*count;
+[in_tb+0]=2;
+[in_tb+1]=filename;
+[in_tb+2]=0;
+[in_tb+8]=-1;
+[in_tb+9]=-1;
+[in_tb+10]=-1;
+[in_tb+11]=-1;
+
+[in_tb+3]=[pte+3];
+[in_tb+4]=permi;
+
+
+alias rt_file R10;
+rt_file=ROOT_FILE+8*count;
+[rt_file+0]=filename;
+[rt_file+1]=0;
+[rt_file+2]=2;
+[rt_file+3]=[pte+3];
+[rt_file+4]=permi;
+
+		[pte+9]=0;	
+		
+        	[RetValue] = 0;
+		SP=[pte + 13] ;
+	
+		ireturn;
+endif;
+
+
+
+if(syscall==4)then
+
+
+[pte+9]=4;
+alias cnt R7;
+cnt=0;
+alias cnt1 R8;
+cnt1=0;
+
+
+while(cnt<60)do
+	ute=INODE_TABLE+cnt*16;
+	if (filename==[ute+1])then
+		cnt1=1;	
+		if([ute]==2)then
+			break;
+		endif;
+			
+	endif;
+	cnt=cnt+1;
+endwhile;
+breakpoint;
+	if(cnt1!=1 || cnt==60)then
+	if(cnt1!=1)then
+        [RetValue] = 0;
+	else      
+	        [RetValue] = -1;
+	endif;
+		[pte+9]=0;
+		SP=[pte + 13] ;
+		ireturn;
+	endif;
+
+
+if([ute+4]==0)then
+if([pte+3]!=0 )then
+if( [ute+3]!=[pte+3] )then
+	
+        [RetValue] = -1;
+	[pte+9]=0;
+	SP=[pte + 13] ;
+	ireturn;
+endif;
+endif;
+endif;
+
+
+
+multipush(R1,R6,R8,R11,R12);
+alias functionNum1 R1;
+functionNum1=4;
+call MOD_0;
+if(R0==-1)then
+	
+	[RetValue] = 0;
+	SP=[pte + 13] ;
+	[pte+9]=0;
+	ireturn;
+endif;
+multipop(R1,R6,R8,R11,R12);
+
+if([FILE_STATUS_TABLE+cnt*4+1]!=-1)then
+[FILE_STATUS_TABLE+cnt*4]=-1;
+
+	[RetValue] = -2;
+	[pte+9]=0;
+	SP=[pte + 13] ;
+	
+	ireturn;
+endif;
+
+cnt1=8;
+alias B_INDEX R10;	
+B_INDEX=0;
+
+while(cnt1!=12)do
+if([ute+cnt1]!=-1)then
+	
+	B_INDEX=[ute+cnt1]%4;
+	if([BUFFER_TABLE+B_INDEX*4]==[ute+cnt1])then
+	if([BUFFER_TABLE+B_INDEX*4+1]==1)then
+		[BUFFER_TABLE+B_INDEX*4+1]=0;
+	endif;
+	endif;
+
+	multipush(R1,R2,R6);
+	alias functionNum R1;
+	functionNum=4;	
+	R2=[ute+cnt1];
+	call MOD_2;
+	multipop(R1,R2,R6);
+endif;
+cnt1=cnt1+1;
+endwhile;
+cnt1=0;
+
+while(cnt1!=16)do
+	[ute+cnt1]=-1;
+	cnt1=cnt1+1;
+endwhile;
+
+breakpoint;
+cnt1=0;
+ute=ROOT_FILE+cnt*8;
+while(cnt1!=8)do
+	[ute+cnt1]=-1;
+	cnt1=cnt1+1;
+endwhile;
+breakpoint;
+	multipush(R1,R2,R3,R4,R5,R6);
+	alias functionNum R1;
+	functionNum=5;	
+	call MOD_0;
+	multipop(R1,R2,R3,R4,R5,R6);
+
+breakpoint;
+
+
+[pte+9]=0;
+
+	[RetValue] = 0;
+SP=[pte+ 13] ;
+	ireturn;
+endif;
+
